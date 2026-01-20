@@ -1,41 +1,63 @@
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 
 class ERA5HealpixPipeline:
-    def __init__(self, data_dir="/data/era5/healpix/"):
+    def __init__(self, data_dir="./data/era5/healpix/", debug=False):
         self.data_dir = data_dir
+        self.debug = debug          # if True, it will not download actual data
+        if not os.path.exists(self.data_dir):
+            os.makedirs(self.data_dir)
 
     def process_and_archive_daily_data(
         self,
-        end_date = None, 
-        fixed_date = None,
-        debug = False                       # if True, it will not download actual data
+        start_date = date(1940, 1, 1),
+        end_date = None,
+        fixed_date = None       
     ):
+        assert (start_date or end_date or fixed_date), "At least one of start_date, end_date, or fixed_date must be provided."
         assert not (end_date and fixed_date), "Provide either end_date or fixed_date, not both."
 
-        start_date, end_date = self._get_start_and_end_dates(end_date, fixed_date)
+        start_date, end_date = self._get_start_and_end_dates(start_date, end_date, fixed_date)
+
+        already_downloaded_dates = self._get_already_downloaded_dates()
+        current_date = start_date
+        while current_date <= end_date:
+            if current_date in already_downloaded_dates:
+                print(f"Data for {current_date} already downloaded. Skipping.")
+                current_date += timedelta(days=1)
+                continue
+            self.download_data_for_date(current_date)
+            self.process_data_for_date(current_date)
+            self.archive_data_for_date(current_date)
+            current_date += timedelta(days=1)
         
 
-    def _get_start_and_end_dates(self, end_date, fixed_date):
-        # if no end_date is provided, use today's date
-        if not end_date and not fixed_date:
-            end_date = datetime.now(datetime.timezone.utc).date()
+    def _get_start_and_end_dates(self, start_date, end_date, fixed_date):
+        latest_available_date = datetime.now(timezone.utc).date() - timedelta(days=5)
 
         if fixed_date:
-            start_date = fixed_date
-            end_date = fixed_date
-        else:
-            # find latest date in data directory
-            latest_date = None
-            for entry in os.listdir(self.data_dir):
-                try:
-                    date_string = entry.split('.')[0]
-                    entry_date = datetime.strptime(date_string, "%Y-%m-%d").date()
-                    if not latest_date or entry_date > latest_date:
-                        latest_date = entry_date
-                except ValueError:
-                    continue
+            return fixed_date, fixed_date
+
+        if start_date and end_date:
+            return start_date, end_date
+
+        if start_date and not end_date:
+            return start_date, latest_available_date
+
+        if end_date and not start_date:
+            return date(1940, 1, 1), end_date
+        
+    def _get_already_downloaded_dates(self):
+        already_downloaded_dates = []
+        for fname in os.listdir(self.data_dir):
+            try:
+                already_downloaded_dates.append(
+                    datetime.strptime(fname.split('.')[0], "%Y-%m-%d").date()
+                )
+            except ValueError:
+                continue
+        return already_downloaded_dates
 
     def download_data_for_date(self, date):
         # Placeholder for actual download logic
@@ -48,3 +70,7 @@ class ERA5HealpixPipeline:
     def archive_data_for_date(self, date):
         # Placeholder for actual archiving logic
         print(f"Archiving data for {date}...")
+
+if __name__ == "__main__":
+    pipeline = ERA5HealpixPipeline(debug=True)
+    pipeline.process_and_archive_daily_data()
