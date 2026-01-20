@@ -1,14 +1,17 @@
 import os
+import cdsapi
 from datetime import date, datetime, timedelta, timezone
 
 
 class ERA5HealpixPipeline:
-    def __init__(self, data_dir="./data/era5/healpix/", redownload=False, debug=False):
+    def __init__(self, data_dir="./downloads/era5/healpix/", redownload=False, debug=False):
         self.data_dir = data_dir
         self.redownload = redownload    # if True, it will re-download existing data
         self.debug = debug              # if True, it will not download actual data
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
+        self.client = cdsapi.Client()
+
 
     def process_and_archive_daily_data(
         self,
@@ -52,6 +55,7 @@ class ERA5HealpixPipeline:
     def _get_already_downloaded_dates(self):
         already_downloaded_dates = []
         for fname in os.listdir(self.data_dir):
+            if not os.path.isfile(os.path.join(self.data_dir, fname)): continue
             try:
                 already_downloaded_dates.append(
                     datetime.strptime(fname.split('.')[0], "%Y-%m-%d").date()
@@ -61,8 +65,47 @@ class ERA5HealpixPipeline:
         return already_downloaded_dates
 
     def download_data_for_date(self, date):
-        # Placeholder for actual download logic
-        print(f"Downloading data for {date}...")
+        if self.debug:
+            print(f"Downloading data for {date}...")
+            print("Debug mode is ON. Skipping actual download.")
+            return
+        
+        self.client.retrieve(
+            'reanalysis-era5-pressure-levels',
+            {
+                'product_type': 'reanalysis',
+                'format': 'netcdf',
+                'variable': [
+                    'geopotential', 'potential_vorticity', 'temperature',
+                    'u_component_of_wind', 'v_component_of_wind',
+                ],
+                'pressure_level': [
+                    '100', '125', '150',
+                    '175', '200', '225',
+                    '250', '300', '350',
+                    '400', '450', '500',
+                    '550', '600', '650',
+                    '700', '750', '775',
+                    '800', '825', '850',
+                    '875', '900', '925',
+                    '950', '975', '1000',
+                ],
+                'year': str(date.year),
+                'month': f"{date.month:02d}",
+                'day': f"{date.day:02d}",
+                'time': [
+                    '00:00',
+                    '06:00',
+                    '12:00',
+                    '18:00',
+                ],
+                'area': [
+                    10, -120, -60,
+                    -20,
+                ],
+            },
+            os.path.join(self.data_dir,f'{date.strftime("%Y-%m-%d")}.nc')
+        )
 
     def process_data_for_date(self, date):
         # Placeholder for actual processing logic
@@ -74,4 +117,4 @@ class ERA5HealpixPipeline:
 
 if __name__ == "__main__":
     pipeline = ERA5HealpixPipeline(debug=True)
-    pipeline.process_and_archive_daily_data()
+    pipeline.process_and_archive_daily_data(fixed_date=date(2020, 1, 1))
