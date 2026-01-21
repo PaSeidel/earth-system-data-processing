@@ -1,9 +1,8 @@
 import os
-import cdsapi
-import shutil
 import logging
-import tempfile
+import xarray as xr
 from era5_downloader import ERA5Downloader
+from healpix_converter import create_healpix_dataset
 from datetime import date, datetime, timedelta, timezone
 
 
@@ -43,9 +42,18 @@ class ERA5HealpixPipeline:
                 current_date += timedelta(days=1)
                 continue
             if not self.debug:
-                self.downloader.download_data_for_date(current_date)
-                self.process_data_for_date(current_date)
-                self.archive_data_for_date(current_date)
+                nc_fpath = self.downloader.download_data_for_date(current_date)
+                ds_hp8, ds_hp16 = self.process_lat_lon_data(nc_fpath)
+                ds_hp8.to_zarr(
+                    os.path.join(self.data_dir, f"era5_healpix_nside8_{current_date.strftime('%Y-%m-%d')}.zarr"),
+                    mode='w'
+                )
+                ds_hp16.to_zarr(
+                    os.path.join(self.data_dir, f"era5_healpix_nside16_{current_date.strftime('%Y-%m-%d')}.zarr"),
+                    mode='w'
+                )
+                logger.info(f"Processed and saved HEALPix data for {current_date}")
+                self.clean_up_temp_files(nc_fpath)
             current_date += timedelta(days=1)
         
 
@@ -76,13 +84,20 @@ class ERA5HealpixPipeline:
                 continue
         return already_downloaded_dates
 
-    def process_data_for_date(self, date):
-        # Placeholder for actual processing logic
-        print(f"Processing data for {date}...")
+    def process_lat_lon_data(self, file_path):
+        logger.info(f"Processing data from {file_path}...")
+        ds_latlon = xr.open_dataset(file_path)
+        ds_hp8 = create_healpix_dataset(ds_latlon, nside=8)
+        ds_hp16 = create_healpix_dataset(ds_latlon, nside=16)
+        return ds_hp8, ds_hp16
 
-    def archive_data_for_date(self, date):
-        # Placeholder for actual archiving logic
-        print(f"Archiving data for {date}...")
+    def clean_up_temp_files(self, file_path):
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                logger.debug(f"Removed temporary file: {file_path}")
+        except Exception as e:
+            logger.error(f"Error removing temporary file {file_path}: {e}")
 
 if __name__ == "__main__":
     pipeline = ERA5HealpixPipeline(debug=False)
@@ -90,3 +105,4 @@ if __name__ == "__main__":
         start_date=date(2024,12,1),
         end_date=date(2024,12,5)
     )
+

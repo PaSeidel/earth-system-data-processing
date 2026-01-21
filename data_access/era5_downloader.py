@@ -82,7 +82,6 @@ class ERA5Downloader:
             logger.info(f"Successfully downloaded {file_size / 1024 / 1024:.2f} MB for {target_date}")
             
             # Move file from temp directory to data directory
-            # TODO move to processing function
             final_path = os.path.join(self.data_dir, f"{target_date.strftime('%Y-%m-%d')}.nc")
             shutil.move(output_file, final_path)
             logger.debug(f"Moved file to: {final_path}")
@@ -95,7 +94,6 @@ class ERA5Downloader:
         
         finally:
             # Clean up temporary directory if it still exists
-            # TODO move to processing function
             if temp_dir and os.path.exists(temp_dir):
                 try:
                     shutil.rmtree(temp_dir)
