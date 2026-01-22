@@ -55,11 +55,12 @@ class ERA5HealpixPipeline:
         already_downloaded_dates = self._get_already_downloaded_dates()
         current_date = start_date
         while current_date <= end_date:
-            if current_date in already_downloaded_dates and not self.redownload:
-                print(f"Data for {current_date} already downloaded. Skipping.")
-                nc_fpath = os.path.join(self.netcdf_dir, f"{current_date.strftime('%Y-%m-%d')}.nc")
-            elif not self.debug:
-                nc_fpath = self.downloader.download_data_for_date(current_date)
+            if not self.debug:
+                if current_date in already_downloaded_dates and not self.redownload:
+                    print(f"Data for {current_date} already downloaded. Skipping.")
+                    nc_fpath = os.path.join(self.netcdf_dir, f"{current_date.strftime('%Y-%m-%d')}.nc")
+                else:
+                    nc_fpath = self.downloader.download_data_for_date(current_date)
             else:
                 logger.info(f"Debug mode: Skipping download and processing for {current_date}")
                 current_date += timedelta(days=1)
@@ -147,10 +148,10 @@ class ERA5HealpixPipeline:
             logger.error(f"Error saving to consolidated zarr: {type(e).__name__}: {e}")
             raise
 
-if __name__ == "__main__":
-    pipeline = ERA5HealpixPipeline(debug=False, single_zarr_file=True)
-    pipeline.process_and_archive_daily_data(
-        start_date=date(2024,12,1),
-        end_date=date(2024,12,5)
-    )
+# if __name__ == "__main__":
+#     pipeline = ERA5HealpixPipeline(debug=False, single_zarr_file=True)
+#     pipeline.process_and_archive_daily_data(
+#         start_date=date(2024,12,1),
+#         end_date=date(2024,12,5)
+#     )
 
