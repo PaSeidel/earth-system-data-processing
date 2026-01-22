@@ -24,7 +24,7 @@ def save_healpix_to_zarr(ds_healpix, nside, output_path, mode='w'):
     """
     
     npix = 12 * nside**2
-    chunks = {'time': 20, 'level': 1, 'pixel': npix}
+    chunks = {'time': 48, 'level': 1, 'pixel': npix}
     
     # Apply chunking to dataset
     ds_chunked = ds_healpix.chunk(chunks)
