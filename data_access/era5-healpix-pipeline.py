@@ -148,7 +148,7 @@ class ERA5HealpixPipeline:
             raise
 
 if __name__ == "__main__":
-    pipeline = ERA5HealpixPipeline(debug=True, single_zarr_file=True)
+    pipeline = ERA5HealpixPipeline(debug=False, single_zarr_file=True)
     pipeline.process_and_archive_daily_data(
         start_date=date(2024,12,1),
         end_date=date(2024,12,5)
