@@ -60,7 +60,7 @@ def append_to_zarr(new_data, zarr_path):
     """    
     try:
         # Load existing data
-        ds_existing = xr.open_zarr(zarr_path)
+        ds_existing = xr.open_zarr(zarr_path).load()
         
         logger.info(f"Existing store has {len(ds_existing.time)} timesteps")
         logger.info(f"Adding {len(new_data.time)} new timesteps")
